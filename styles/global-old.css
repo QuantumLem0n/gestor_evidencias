@@ -1,0 +1,298 @@
+/* ===========================
+       Variables y temas (adaptado de tu global.css)
+       =========================== */
+    :root {
+      --font-size: 14px;
+      --background: #ffffff;
+      --foreground: #1e293b;
+      --card: #ffffff;
+      --card-foreground: #1e293b;
+      --popover: #ffffff;
+      --popover-foreground: #1e293b;
+      --primary: #2563eb;
+      --primary-foreground: #ffffff;
+      --secondary: #e2e8f0;
+      --secondary-foreground: #334155;
+      --muted: #f1f5f9;
+      --muted-foreground: #64748b;
+      --accent: #e0f2fe;
+      --accent-foreground: #0c4a6e;
+      --destructive: #dc2626;
+      --destructive-foreground: #ffffff;
+      --border: #e2e8f0;
+      --input: transparent;
+      --input-background: #f8fafc;
+      --switch-background: #cbd5e1;
+      --font-weight-medium: 500;
+      --font-weight-normal: 400;
+      --ring: #2563eb;
+      --chart-1: #3b82f6;
+      --chart-2: #06b6d4;
+      --chart-3: #8b5cf6;
+      --chart-4: #10b981;
+      --chart-5: #f59e0b;
+      --radius: 0.625rem;
+      --sidebar: #f8fafc;
+      --sidebar-foreground: #1e293b;
+      --sidebar-primary: #2563eb;
+      --sidebar-primary-foreground: #ffffff;
+      --sidebar-accent: #e2e8f0;
+      --sidebar-accent-foreground: #334155;
+      --sidebar-border: #e2e8f0;
+      --sidebar-ring: #2563eb;
+
+      /* Roles */
+      --student-primary: #3b82f6;
+      --student-secondary: #dbeafe;
+      --student-accent: #bfdbfe;
+      --student-border: #1e40af;
+      --student-border-light: #3b82f6;
+
+      --teacher-primary: #1d4ed8;
+      --teacher-secondary: #e0e7ff;
+      --teacher-accent: #c7d2fe;
+      --teacher-border: #1e3a8a;
+      --teacher-border-light: #3730a3;
+
+      /* Líneas azul oscuro */
+      --dark-blue-border: #0f172a;
+      --medium-blue-border: #1e293b;
+      --accent-blue-border: #334155;
+
+      /* Text scale base (sustituto simple del @theme text-*) */
+      --text-sm: 12px;
+      --text-base: 14px;
+      --text-lg: 16px;
+      --text-xl: 18px;
+      --text-2xl: 20px;
+    }
+
+    html.dark {
+      --background: #0f172a;
+      --foreground: #f1f5f9;
+      --card: #1e293b;
+      --card-foreground: #f1f5f9;
+      --popover: #1e293b;
+      --popover-foreground: #f1f5f9;
+      --primary: #60a5fa;
+      --primary-foreground: #0f172a;
+      --secondary: #334155;
+      --secondary-foreground: #f1f5f9;
+      --muted: #334155;
+      --muted-foreground: #94a3b8;
+      --accent: #1e40af;
+      --accent-foreground: #f1f5f9;
+      --destructive: #ef4444;
+      --destructive-foreground: #f1f5f9;
+      --border: #334155;
+      --input: #334155;
+      --ring: #60a5fa;
+      --font-weight-medium: 500;
+      --font-weight-normal: 400;
+      --chart-1: #60a5fa;
+      --chart-2: #22d3ee;
+      --chart-3: #a78bfa;
+      --chart-4: #34d399;
+      --chart-5: #fbbf24;
+      --sidebar: #1e293b;
+      --sidebar-foreground: #f1f5f9;
+      --sidebar-primary: #60a5fa;
+      --sidebar-primary-foreground: #0f172a;
+      --sidebar-accent: #334155;
+      --sidebar-accent-foreground: #f1f5f9;
+      --sidebar-border: #334155;
+      --sidebar-ring: #60a5fa;
+
+      --student-primary: #60a5fa;
+      --student-secondary: #1e3a8a;
+      --student-accent: #3730a3;
+      --student-border: #60a5fa;
+      --student-border-light: #93c5fd;
+
+      --teacher-primary: #4338ca;
+      --teacher-secondary: #312e81;
+      --teacher-accent: #4c1d95;
+      --teacher-border: #6366f1;
+      --teacher-border-light: #818cf8;
+
+      --dark-blue-border: #60a5fa;
+      --medium-blue-border: #3b82f6;
+      --accent-blue-border: #2563eb;
+    }
+
+    html { font-size: var(--font-size); }
+    * { box-sizing: border-box; transition: background-color .3s ease, border-color .3s ease, color .3s ease; }
+
+    body {
+      margin: 0;
+      background: var(--background);
+      color: var(--foreground);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      line-height: 1.5;
+    }
+
+    /* ========= Gradientes por rol ========= */
+    .student-gradient-bg {
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 50%, #bfdbfe 100%);
+    }
+    .teacher-gradient-bg {
+      background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 50%, #c7d2fe 100%);
+    }
+    html.dark .student-gradient-bg,
+    html.dark .teacher-gradient-bg {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+    }
+
+    /* ========= Contenedor de página ========= */
+    .page {
+      min-height: 100svh;
+      display: flex;
+      flex-direction: column;
+    }
+    .container {
+      max-width: 1120px; /* ~max-w-7xl */
+      margin: 0 auto;
+      padding: 0 24px;
+      width: 100%;
+    }
+
+    /* ========= Header ========= */
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(255,255,255,0.8);
+      color: inherit;
+      backdrop-filter: blur(6px);
+      border-bottom: 2px solid var(--border);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+    }
+    html.dark .app-header {
+      background: rgba(30,41,59,0.80); /* bg-white/80 en dark según tu css */
+      box-shadow: 0 1px 2px rgba(0,0,0,0.30);
+    }
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+    }
+
+    /* Brand */
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .brand-box {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      box-shadow: 0 10px 15px -3px rgba(0,0,0,.15), 0 4px 6px -2px rgba(0,0,0,.08);
+      background: var(--primary);
+      color: var(--primary-foreground);
+    }
+    .brand-title {
+      margin: 0;
+      font-weight: 600;
+      font-size: var(--text-lg);
+      color: var(--foreground);
+    }
+    .brand-subtitle {
+      margin: 2px 0 0 0;
+      font-size: var(--text-sm);
+      color: var(--muted-foreground);
+    }
+
+    /* Right cluster */
+    .right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .profile {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-weight: 600;
+      font-size: 12px;
+      outline: 2px solid transparent;
+      outline-offset: 2px;
+    }
+      /* Student styles por defecto */
+    .student-theme .avatar {
+      background: var(--student-secondary);
+      color: var(--student-primary);
+      outline-color: color-mix(in srgb, var(--student-primary) 20%, transparent);
+    }
+    .teacher-theme .avatar {
+      background: var(--teacher-secondary);
+      color: var(--teacher-primary);
+      outline-color: color-mix(in srgb, var(--teacher-primary) 20%, transparent);
+    }
+
+    .profile-text p {
+      margin: 0;
+      line-height: 1.25;
+    }
+    .profile-name {
+      font-size: var(--text-sm);
+      font-weight: 600;
+      color: var(--foreground);
+    }
+    .profile-email {
+      font-size: 12px;
+      color: var(--muted-foreground);
+    }
+
+    /* Botones */
+    .btn {
+      --_bg: transparent;
+      --_fg: var(--foreground);
+      --_bd: var(--border);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--_bd);
+      background: var(--_bg);
+      color: var(--_fg);
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-size: var(--text-sm);
+      font-weight: 500;
+      text-decoration: none;
+      cursor: pointer;
+      user-select: none;
+      transition: background-color .2s ease, border-color .2s ease, color .2s ease;
+    }
+    .btn:hover { background: var(--muted); }
+    .btn:focus-visible { outline: 3px solid color-mix(in srgb, var(--ring) 30%, transparent); outline-offset: 2px; }
+
+    .btn-primary {
+      --_bg: var(--primary);
+      --_fg: var(--primary-foreground);
+      --_bd: var(--primary);
+    }
+    .btn-primary:hover { filter: brightness(0.95); }
+
+    /* Íconos SVG */
+    .icon { width: 16px; height: 16px; display: inline-block; }
+
+    /* Main placeholder (espacio para tu dashboard) */
+    main {
+      padding: 32px 24px;
+    }
+
+    /* Bordes “azul oscuro” utilitarios */
+    .dark-blue-border { border-color: var(--dark-blue-border) !important; }
+    .medium-blue-border { border-color: var(--medium-blue-border) !important; }
+    .accent-blue-border { border-color: var(--accent-blue-border) !important; }
