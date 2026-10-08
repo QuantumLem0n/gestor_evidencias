@@ -118,7 +118,8 @@ $res = $stmt->get_result();
           if ($totalAttrs <= 0 || $filledAttrs < $totalAttrs || $totalInst <= 0) continue;
 
           $pct = 100;
-          $href = $file ? ('uploads/files/'.rawurlencode($file)) : '';
+          $href = $file ? ('evidencia-archivo.php?id='.$id.'&amp;descargar=1') : '';
+          $btnPreview = $file ? '<a class="btn" href="evidencia-archivo.php?id='.$id.'" target="_blank" rel="noopener" title="Ver documento sin descargar">Ver documento</a> ' : '';
 
           $pend = max(0, $totalInst - $gradedInst);
           $estadoCalc = ($pend === 0) ? 'completa' : 'pendiente';
@@ -154,7 +155,7 @@ $res = $stmt->get_result();
         <td class="font-medium"><?= htmlspecialchars($tit ?: '—') ?></td>
         <td><span class="badge"><?= htmlspecialchars($tipoN) ?></span></td>
         <td><?= htmlspecialchars($docN ?: '—') ?></td>
-        <td><?= $btnDownload ?></td>
+        <td><?= $btnPreview ?><?= $btnDownload ?></td>
         <td><span class="badge" title="<?= htmlspecialchars($row['fecha_subida'] ?? '') ?>"><?= htmlspecialchars($date) ?></span></td>
         <td title="<?= $filledAttrs ?>/<?= $totalAttrs ?> atributos">
           <div class="progress"><div class="progress-bar" style="width: 100%;"></div></div>

@@ -353,6 +353,32 @@ Los tipos de calificacion soportados son:
 
 ## Evaluacion de evidencias
 
+### Vista previa del documento
+
+`vista-evaluacion.php` enlaza **Ver documento** a `evidencia-archivo.php?id=ID`.
+El mismo visor se integra en `modal-evaluar-evidencia.php` junto a los controles
+de calificacion; incluye abrir en otra pestaña y descargar. El diseño pasa de
+dos columnas a una en pantallas de hasta 900 px.
+
+El endpoint recibe exclusivamente el ID de evidencia. Consulta la cuenta y sus
+asignaciones vigentes, exige que la evidencia no este oculta y verifica con
+`realpath` que el archivo este dentro de `uploads/files`. Administradores tienen
+acceso global, evaluadores necesitan un instrumento activo asignado y relacionado
+al tipo, y docentes solo pueden consultar archivos propios.
+
+- Sin parametros adicionales devuelve la pagina del visor.
+- `contenido=1` entrega PDF, JPEG, PNG, GIF, WebP o texto plano con disposicion
+  `inline`, segun el MIME real detectado por Fileinfo.
+- `descargar=1` entrega el archivo como adjunto. Formatos como DOCX/XLSX no se
+  convierten: el visor indica que deben descargarse para abrirse en su aplicacion.
+- PDF requiere el visor nativo habilitado en el navegador. Si no se muestra,
+  siguen disponibles abrir en otra pestaña y descargar.
+- Se usa `Cache-Control: private, no-store`, `nosniff` y `SAMEORIGIN`. Cada peticion
+  revalida permisos. No se utilizan servicios externos ni se modifica el esquema SQL.
+
+`tests/instrumentos.php` incluye acceso autorizado, descarga, revocacion,
+sesion ausente, docente ajeno, rutas fuera del directorio y formatos no compatibles.
+
 ### Archivos relevantes
 
 - `evaluacion.php`

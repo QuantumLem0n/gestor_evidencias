@@ -4,28 +4,33 @@ require_once 'conexion.php';
 ?>
 <div class="dialog-backdrop" id="dlgEvalBackdrop"></div>
 <div class="dialog" id="dlgEval" role="dialog" aria-modal="true" aria-labelledby="dlgEvalTitle" data-open="false">
-  <div class="dialog-card modal-card-scroll" style="max-width:1000px;">
+  <div class="dialog-card modal-card-scroll eval-dialog-card">
     <div class="dialog-header">
       <h3 class="dialog-title" id="dlgEvalTitle">Evaluar evidencia</h3>
-      <p class="dialog-desc">Revisa los atributos capturados y asigna calificaciones por instrumento.</p>
+      <p class="dialog-desc">Consulta el documento y los atributos mientras calificas cada instrumento.</p>
     </div>
 
-    <div class="dialog-body dialog-body-scroll" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
-      <!-- Atributos -->
-      <section class="card">
-        <div class="card-content">
-          <h4 style="margin-bottom:8px;">Atributos capturados</h4>
-          <div id="evalAtributos" class="space-y-2" style="max-height: 60vh; overflow:auto;"></div>
-        </div>
+    <div class="dialog-body dialog-body-scroll eval-layout">
+      <section class="card eval-documento">
+        <h4>Documento de la evidencia</h4>
+        <iframe id="evalDocumento" title="Vista previa del documento de la evidencia" src="about:blank"></iframe>
+        <p class="eval-meta">Si el navegador no muestra el PDF, utiliza «Abrir en otra pestaña» o «Descargar» en el visor.</p>
       </section>
 
-      <!-- Instrumentos -->
+      <div class="eval-panel">
       <section class="card">
         <div class="card-content">
           <h4 style="margin-bottom:8px;">Evaluación por instrumento</h4>
           <div id="evalInstruments" class="space-y-3"></div>
         </div>
       </section>
+      <details class="card eval-atributos" open>
+        <summary>Atributos capturados</summary>
+        <div class="card-content">
+          <div id="evalAtributos" class="space-y-2"></div>
+        </div>
+      </details>
+      </div>
     </div>
 
     <div class="dialog-actions dialog-actions-sticky">
@@ -41,12 +46,26 @@ require_once 'conexion.php';
 .eval-block { border:1px solid var(--border,#e5e7eb); border-radius:12px; padding:12px; }
 .eval-title { display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .eval-meta { font-size:12px; color:var(--muted-foreground,#666); }
+#dlgEval .eval-dialog-card { width:calc(100vw - 24px); max-width:1440px; }
+#dlgEval .eval-layout { display:grid; grid-template-columns:minmax(0, 3fr) minmax(0, 2fr); gap:16px; min-height:0; }
+#dlgEval .eval-documento { min-width:0; padding:12px; }
+#dlgEval .eval-documento h4 { margin:0 0 8px; }
+#evalDocumento { display:block; width:100%; height:58vh; min-height:300px; border:1px solid var(--border); border-radius:8px; }
+#dlgEval .eval-panel { min-width:0; max-height:68vh; overflow:auto; }
+#dlgEval .eval-atributos { margin-top:12px; }
+#dlgEval .eval-atributos summary { padding:12px; cursor:pointer; font-weight:600; }
+@media (max-width:900px) {
+  #dlgEval .eval-layout { grid-template-columns:minmax(0, 1fr); }
+  #dlgEval .eval-panel { max-height:none; overflow:visible; }
+  #evalDocumento { height:48vh; }
+}
 </style>
 <script>
 (function(){
   const modal    = document.getElementById('dlgEval');
   const backdrop = document.getElementById('dlgEvalBackdrop');
   const btnClose = document.getElementById('btnCloseEval');
+  let cargaActual = 0;
 
   function open() {
     modal.setAttribute('data-open','true');
@@ -54,6 +73,8 @@ require_once 'conexion.php';
     if (typeof window.lockPageScroll === 'function') lockPageScroll(true);
   }
   function close() {
+    cargaActual++;
+    document.getElementById('evalDocumento').src = 'about:blank';
     modal.setAttribute('data-open','false');
     backdrop.setAttribute('data-open','false');
     if (typeof window.lockPageScroll === 'function') lockPageScroll(false);
@@ -72,11 +93,13 @@ require_once 'conexion.php';
      OJO: no hacemos filter(Boolean) para no perder ceros "0".
   */
   function loadAtributos(eviId){
+    const carga = cargaActual;
     const wrap = document.getElementById('evalAtributos');
     wrap.innerHTML = '<p class="text-muted">Cargando atributos…</p>';
     fetch('evidencia-atributos-get.php?id=' + encodeURIComponent(eviId))
       .then(r=>r.json())
       .then(j=>{
+        if (carga !== cargaActual) return;
         if (!j || j.status !== 'ok') { wrap.innerHTML = '<p class="text-muted">No se pudieron cargar los atributos.</p>'; return; }
         const attrs = j.atributos || [];
         if (!attrs.length) { wrap.innerHTML = '<p class="text-muted">Sin atributos.</p>'; return; }
@@ -111,16 +134,18 @@ require_once 'conexion.php';
 
         wrap.innerHTML = ''; wrap.appendChild(frag);
       })
-      .catch(()=>{ wrap.innerHTML = '<p class="text-muted">Error al cargar.</p>'; });
+      .catch(()=>{ if (carga === cargaActual) wrap.innerHTML = '<p class="text-muted">Error al cargar.</p>'; });
   }
 
   /* ========= Instrumentos: cargar y renderizar ========= */
   function loadInstruments(eviId){
+    const carga = cargaActual;
     const wrap = document.getElementById('evalInstruments');
     wrap.innerHTML = '<p class="text-muted">Cargando instrumentos…</p>';
     fetch('evaluacion-get.php?id=' + encodeURIComponent(eviId))
       .then(r=>r.json())
       .then(j=>{
+        if (carga !== cargaActual) return;
         if (!j || j.status !== 'ok') { wrap.innerHTML = '<p class="text-muted">No se pudieron cargar los instrumentos.</p>'; return; }
         const ins = j.instrumentos || [];
         if (!ins.length) { wrap.innerHTML = '<p class="text-muted">No hay instrumentos asignados disponibles para esta evidencia.</p>'; return; }
@@ -165,7 +190,7 @@ require_once 'conexion.php';
         });
         wrap.innerHTML = ''; wrap.appendChild(frag);
       })
-      .catch(()=>{ wrap.innerHTML = '<p class="text-muted">Error al cargar.</p>'; });
+      .catch(()=>{ if (carga === cargaActual) wrap.innerHTML = '<p class="text-muted">Error al cargar.</p>'; });
   }
 
   /* ========= Guardar evaluación (por instrumento) ========= */
@@ -207,6 +232,8 @@ require_once 'conexion.php';
 
   /* ========= Abrir modal público ========= */
   window.evalOpenModal = function(eviId){
+    cargaActual++;
+    document.getElementById('evalDocumento').src = 'evidencia-archivo.php?id=' + encodeURIComponent(eviId);
     document.getElementById('dlgEvalTitle').textContent = 'Evaluar evidencia #' + eviId;
     open();
     loadAtributos(eviId);

@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-10-08
+
+### Vista previa de documentos durante la evaluacion
+
+- La tabla de evaluacion ofrece **Ver documento** en otra pestaña y conserva la descarga.
+- El modal muestra el documento junto a los instrumentos para calificar, con atributos
+  desplegables; en pantallas pequeñas los paneles se apilan.
+- Nuevo visor local `evidencia-archivo.php`: PDF, imagenes JPEG/PNG/GIF/WebP y texto
+  plano se sirven inline. Otros formatos muestran una alternativa de descarga.
+- El visor y la entrega del archivo verifican cuenta activa y permisos vigentes:
+  evaluador asignado a un instrumento activo del tipo, docente propietario o administrador.
+  Se rechazan evidencias ocultas, archivos inexistentes y rutas fuera de `uploads/files`.
+- El tipo real del archivo se detecta con Fileinfo; no se sirve HTML/SVG como contenido
+  activo. No se envian documentos a visores externos ni se cambia la base de datos.
+- Al cerrar el modal se libera el visor; respuestas tardias de otra evidencia no
+  reemplazan los atributos ni los instrumentos de la seleccion actual.
+- Verificacion: 42 comprobaciones de integracion correctas, sintaxis PHP y
+  `git diff --check` sin errores. Pendiente revision visual en navegador.
+
 ## 2026-10-07
 
 ### Asignacion de evaluadores y normalizacion de instrumentos

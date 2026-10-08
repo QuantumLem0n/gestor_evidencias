@@ -8,6 +8,8 @@ $db->set_charset('utf8mb4');
 $nombre = 'gestor_test_instrumentos_'.bin2hex(random_bytes(5));
 $sql = str_replace('gestor_evidencia_asignaciones', $nombre, file_get_contents('sql/gestor_evidencia_asignaciones.sql'));
 $runner = tempnam(sys_get_temp_dir(), 'instrumentos_');
+$archivoPrueba = 'test_visor_'.bin2hex(random_bytes(8)).'.pdf';
+$rutaPrueba = getcwd().'/uploads/files/'.$archivoPrueba;
 $creada = false;
 $checks = 0;
 function comprobar($ok, $mensaje) {
@@ -19,13 +21,16 @@ function comprobar($ok, $mensaje) {
 function endpoint($archivo, $usuario, $rol, $post=[], $get=[], $json=true) {
     global $runner, $nombre;
     $session = ['ID'=>$usuario, 'ROL'=>$rol, 'SESUSUARIO'=>'Prueba', 'APELLIDO'=>'Prueba', 'EMAIL'=>'test@example.invalid', 'RNOMBRE'=>'Prueba'];
-    $codigo = '<?php session_save_path(sys_get_temp_dir()); session_start(); register_shutdown_function(function(){ session_destroy(); }); $_SESSION='.var_export($session,true).'; $_POST='.var_export($post,true).'; $_GET='.var_export($get,true).'; putenv('.var_export('GESTOR_DB_NAME='.$nombre,true).'); include '.var_export(getcwd().'/'.$archivo,true).';';
+    $sessionId = str_replace('_', '-', $nombre);
+    $codigo = '<?php session_save_path(sys_get_temp_dir()); session_id('.var_export($sessionId,true).'); session_start(); register_shutdown_function(function(){ if (session_status() === PHP_SESSION_ACTIVE) session_destroy(); }); $_SESSION='.var_export($session,true).'; $_POST='.var_export($post,true).'; $_GET='.var_export($get,true).'; putenv('.var_export('GESTOR_DB_NAME='.$nombre,true).'); include '.var_export(getcwd().'/'.$archivo,true).';';
     file_put_contents($runner, $codigo);
     $proceso = proc_open([PHP_BINARY, $runner], [1=>['pipe','w'], 2=>['pipe','w']], $pipes);
     $salida = stream_get_contents($pipes[1]);
     $error = stream_get_contents($pipes[2]);
     fclose($pipes[1]); fclose($pipes[2]);
     $estado = proc_close($proceso);
+    $sessionFile = sys_get_temp_dir().'/sess_'.$sessionId;
+    if (is_file($sessionFile)) unlink($sessionFile);
     if ($estado || $error) throw new RuntimeException("$archivo: $error $salida");
     return $json ? json_decode($salida, true, 512, JSON_THROW_ON_ERROR) : $salida;
 }
@@ -47,6 +52,22 @@ try {
     $db->query("INSERT INTO evidencias (id_docente,id_tipo_evidencia,titulo,archivo) VALUES (4,$tid,'Prueba permisos','test.pdf')"); $eid=$db->insert_id;
     $db->query("INSERT INTO evidencia_valores_atributo (id_evidencia,id_ate,valor_texto) VALUES ($eid,$aid,'Completo')");
     $db->query("INSERT INTO instrumento_tipo_evidencia (id_instrumento,id_tipo_evidencia) VALUES (1,$tid),(2,$tid),(3,$tid)");
+    copy('sql/prueba/Evidencia de prueba.pdf', $rutaPrueba);
+    $db->query("UPDATE evidencias SET archivo='$archivoPrueba' WHERE id_evidencia=$eid");
+    $visor=endpoint('evidencia-archivo.php',$uid,3,[],['id'=>$eid],false);
+    comprobar(strpos($visor,'Contenido del documento')!==false, 'Visor PDF disponible para evaluador asignado');
+    $contenido=endpoint('evidencia-archivo.php',$uid,3,[],['id'=>$eid,'contenido'=>1],false);
+    comprobar($contenido===file_get_contents($rutaPrueba), 'Vista previa entrega el PDF completo');
+    comprobar(endpoint('evidencia-archivo.php',$uid,3,[],['id'=>$eid,'descargar'=>1],false)===$contenido, 'Descarga conserva el archivo original');
+    comprobar(strpos(endpoint('evidencia-archivo.php',5,4,[],['id'=>$eid,'contenido'=>1],false),'No tienes acceso')!==false, 'Docente ajeno no obtiene el documento');
+    comprobar(strpos(endpoint('evidencia-archivo.php',0,0,[],['id'=>$eid],false),'Inicia sesión')!==false, 'Visor requiere sesion');
+    $db->query("UPDATE evidencias SET archivo='../../conexion.php' WHERE id_evidencia=$eid");
+    comprobar(strpos(endpoint('evidencia-archivo.php',$uid,3,[],['id'=>$eid,'contenido'=>1],false),'El archivo no está disponible')!==false, 'Visor rechaza rutas fuera de uploads');
+    $db->query("UPDATE evidencias SET archivo='$archivoPrueba' WHERE id_evidencia=$eid");
+    file_put_contents($rutaPrueba, '<html><script>alert(1)</script></html>');
+    comprobar(strpos(endpoint('evidencia-archivo.php',$uid,3,[],['id'=>$eid],false),'Este formato no se puede visualizar')!==false, 'Formato no compatible muestra alternativa');
+    comprobar(strpos(endpoint('evidencia-archivo.php',$uid,3,[],['id'=>$eid,'contenido'=>1],false),'no admite vista previa')!==false, 'HTML no se sirve inline aunque tenga extension PDF');
+    copy('sql/prueba/Evidencia de prueba.pdf', $rutaPrueba);
     $r=endpoint('evaluacion-get.php',$uid,3,[],['id'=>$eid]);
     comprobar(array_map('intval',array_column($r['instrumentos'],'id_instrumento'))===[1,2], 'Solo instrumentos asignados en el modal');
     $nota=['id_evidencia'=>$eid,'id_instrumento'=>1,'resultado'=>'1'];
@@ -89,6 +110,7 @@ try {
     comprobar(endpoint('usuario-update.php',1,1,$datos)['status']==='ok','Evaluador sin asignaciones permitido');
     $r=endpoint('evaluacion-get.php',$uid,3,[],['id'=>$eid]);
     comprobar($r['instrumentos']===[], 'Sin asignaciones no ofrece instrumentos');
+    comprobar(strpos(endpoint('evidencia-archivo.php',$uid,3,[],['id'=>$eid,'contenido'=>1],false),'No tienes acceso')!==false, 'Revocar asignaciones bloquea tambien el archivo');
     $datos['instrumentos']=[1];
     comprobar(endpoint('usuario-update.php',1,1,$datos)['status']==='ok','Reasignacion posterior');
     $tipoDatos=['id_tipo_evidencia'=>$tid,'nombre_tipo'=>'Tipo temporal','descripcion'=>'Prueba','instrumentos'=>[1,2,$iid]];
@@ -104,4 +126,5 @@ try {
 } finally {
     if ($creada) $db->query("DROP DATABASE `$nombre`");
     unlink($runner);
+    if (is_file($rutaPrueba)) unlink($rutaPrueba);
 }
