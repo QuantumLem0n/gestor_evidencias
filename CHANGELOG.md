@@ -2,6 +2,17 @@
 
 ## 2026-10-08
 
+### SQL para instalacion limpia en servidor
+
+- Nuevo `sql/gestor_evidencia_produccion.sql`, con el esquema completo, una sola
+  cuenta Super Usuario activa y contraseña almacenada como hash bcrypt.
+- Conserva instrumentos, roles, menús, permisos, iconos y tipos de atributo;
+  elimina del conjunto inicial usuarios de ejemplo y todos los datos operativos.
+- Reinicia contadores de tablas operativas y deja las relaciones de evaluadores
+  y tipos de evidencia vacías para configurarlas desde la plataforma.
+- Instrucciones en `sql/README_produccion.md`. No se modifica la conexión local
+  ni se ejecuta/importa el SQL. Verificación estática y de contraseña realizada.
+
 ### Vista previa de documentos durante la evaluacion
 
 - La tabla de evaluacion ofrece **Ver documento** en otra pestaña y conserva la descarga.
