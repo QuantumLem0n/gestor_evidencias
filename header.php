@@ -226,13 +226,5 @@ $emailUser = $_SESSION['EMAIL'] ?? '';
   };
 })();
 
-// ===== Hamburguesa header -> abrir/cerrar left-menu (off-canvas móvil) =====
-(function(){
-  const hb = document.getElementById('headerHamburger');
-  if (!hb) return;
-  hb.addEventListener('click', function(){
-    // left-menu.php usa body.sidebar-offcanvas + body.sidebar-open
-    document.body.classList.toggle('sidebar-open');
-  });
-})();
+// La hamburguesa se conecta en left-menu.php para compartir estado y breakpoint.
 </script>

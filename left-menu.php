@@ -159,11 +159,38 @@ $currentFile = strtolower(
   const fab = document.getElementById('sidebarFab');
   const backdrop = document.getElementById('sidebarBackdrop');
   const menu = document.getElementById('sidebarMenu');
+  const hamburger = document.getElementById('headerHamburger');
+  // Activa el layout fluido solo en páginas que incluyen este componente.
+  body.classList.add('has-sidebar');
+  let desktopCollapsed = false;
+  try { desktopCollapsed = localStorage.getItem('sidebarCollapsed') === 'true'; } catch (e) {}
+
+  // Un único control de apertura mantiene los botones accesibles sincronizados.
+  function setOpen(open) {
+    body.classList.toggle('sidebar-open', open && !mqDesktop.matches);
+    [fab, hamburger].forEach(button => {
+      if (!button) return;
+      button.setAttribute('aria-controls', 'appSidebar');
+      button.setAttribute('aria-expanded', String(open && !mqDesktop.matches));
+      button.setAttribute('aria-label', open ? 'Cerrar menú' : 'Abrir menú');
+    });
+  }
+
+  // DataTables 2.1 no observa el ancho del contenedor: recalcular al contraer
+  // el menú permite recuperar columnas sin recargar ni perder filtros/página.
+  function resizeTables() {
+    requestAnimationFrame(() => {
+      if (!window.jQuery || !jQuery.fn.dataTable) return;
+      const tables = jQuery.fn.dataTable.tables({ visible: true, api: true });
+      tables.columns.adjust();
+      if (tables.responsive) tables.responsive.recalc();
+    });
+  }
 
   function setBodyState() {
     if (mqDesktop.matches) {
       body.classList.remove('sidebar-offcanvas', 'sidebar-open');
-      const collapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+      const collapsed = desktopCollapsed;
       body.classList.toggle('sidebar-collapsed', collapsed);
       body.classList.toggle('sidebar-expanded', !collapsed);
       updateCollapseButton(collapsed);
@@ -173,11 +200,14 @@ $currentFile = strtolower(
       body.classList.remove('sidebar-open'); // cerrado por defecto
       updateCollapseButton(false);
     }
+    setOpen(false);
+    resizeTables();
   }
 
   function updateCollapseButton(isCollapsed) {
-    collapseBtn.setAttribute('title', isCollapsed ? 'Expandir menú' : 'Contraer menú');
-    collapseBtn.setAttribute('aria-label', isCollapsed ? 'Expandir menú' : 'Contraer menú');
+    const label = !mqDesktop.matches ? 'Cerrar menú' : (isCollapsed ? 'Expandir menú' : 'Contraer menú');
+    collapseBtn.setAttribute('title', label);
+    collapseBtn.setAttribute('aria-label', label);
     collapseBtn.setAttribute('aria-pressed', isCollapsed ? 'true' : 'false');
     collapseBtn.innerHTML = isCollapsed
       ? `<svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="width:16px;height:16px;">
@@ -191,17 +221,19 @@ $currentFile = strtolower(
   }
 
   function toggleCollapse(){
-    if (!mqDesktop.matches) return;
+    if (!mqDesktop.matches) { setOpen(false); return; }
     const collapsed = body.classList.contains('sidebar-collapsed');
     body.classList.toggle('sidebar-collapsed', !collapsed);
     body.classList.toggle('sidebar-expanded', collapsed);
-    localStorage.setItem('sidebarCollapsed', String(!collapsed));
+    desktopCollapsed = !collapsed;
+    try { localStorage.setItem('sidebarCollapsed', String(!collapsed)); } catch (e) {}
     updateCollapseButton(!collapsed);
+    resizeTables();
   }
 
   function toggleOffcanvas(){
     if (!body.classList.contains('sidebar-offcanvas')) return;
-    body.classList.toggle('sidebar-open');
+    setOpen(!body.classList.contains('sidebar-open'));
   }
 
   // Fallback extra de active por si la URL trae query o hash raros
@@ -235,11 +267,13 @@ $currentFile = strtolower(
 
   if (collapseBtn) collapseBtn.addEventListener('click', toggleCollapse);
   if (fab) fab.addEventListener('click', toggleOffcanvas);
-  if (backdrop) backdrop.addEventListener('click', () => body.classList.remove('sidebar-open'));
+  if (hamburger) hamburger.addEventListener('click', toggleOffcanvas);
+  if (backdrop) backdrop.addEventListener('click', () => setOpen(false));
 
   document.addEventListener('keydown', (e)=> {
     if (e.key === 'Escape' && body.classList.contains('sidebar-open')) {
-      body.classList.remove('sidebar-open');
+      setOpen(false);
+      if (hamburger) hamburger.focus();
     }
   });
 })();

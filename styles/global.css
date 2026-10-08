@@ -357,11 +357,14 @@ Parte correspondiente a los estilos en el Dashboard de maestro
   box-shadow: 0 8px 24px rgba(2,8,23,.06);
   display: flex;
   flex-direction: column;
-  transition: width .25s ease, transform .25s ease, background-color .3s ease, border-color .3s ease, color .3s ease;
+  /* El ancho cambia junto con el contenido, sin solaparlo durante una animación. */
+  transition: transform .25s ease, background-color .3s ease, border-color .3s ease, color .3s ease;
 }
 
 /* Contenido desplazable */
 .sidebar .sidebar-scroll {
+  min-height: 0; /* Permite desplazar el menú en pantallas de poca altura. */
+  flex: 1;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
   padding: 12px 8px 12px 8px;
@@ -419,24 +422,59 @@ Parte correspondiente a los estilos en el Dashboard de maestro
 }
 
 /* ====== Estados: expandido / colapsado / off-canvas ====== */
-body.sidebar-expanded main { --sidebar-offset: var(--sidebar-width); }
-body.sidebar-collapsed main { --sidebar-offset: var(--sidebar-collapsed-width); }
-body.sidebar-offcanvas main { --sidebar-offset: 0; }
+/* Layout compartido: header y contenido reservan el mismo espacio para el menú.
+   La especificidad evita que .container restablezca el margen a auto; el ancho
+   descontado evita desbordes y elimina el límite de 1120px solo en la plataforma. */
+body.has-sidebar { --sidebar-offset: 0px; }
+@media (min-width: 1024px) {
+  body.has-sidebar.sidebar-expanded { --sidebar-offset: var(--sidebar-width); }
+  body.has-sidebar.sidebar-collapsed { --sidebar-offset: var(--sidebar-collapsed-width); }
+}
+body.has-sidebar > main.container,
+body.has-sidebar > .app-header {
+  width: calc(100% - var(--sidebar-offset));
+  max-width: none;
+  min-width: 0;
+  margin-left: var(--sidebar-offset);
+  margin-right: 0;
+}
+body.has-sidebar .app-header > .container { max-width: none; }
 
-main { margin-left: var(--sidebar-offset, 0); transition: margin-left .25s ease; }
+/* Los títulos y controles se acomodan sin ensanchar la página en móvil. */
+body.has-sidebar main > section > header { flex-wrap: wrap; }
+body.has-sidebar main .card-content { min-width: 0; overflow-x: auto; }
+/* Las vistas AJAX tienen overflow:hidden inline: permitir desplazamiento local
+   cuando una tabla o sus detalles no caben, sin ensanchar todo el documento. */
+body.has-sidebar main .card-content:has(table) { overflow-x: auto !important; }
+body.has-sidebar main .card-content > div { min-width: 0; max-width: 100%; }
+body.has-sidebar main .input { min-width: 0; }
+body.has-sidebar main select.input { min-width: 0 !important; max-width: 100%; }
+body.has-sidebar main .grid > * { min-width: 0; }
+body.has-sidebar .header-right,
+body.has-sidebar .brand-box,
+body.has-sidebar .btn-icon { flex-shrink: 0; }
+@media (max-width: 640px) {
+  body.has-sidebar > main.container { padding: 0 12px 72px; }
+  body.has-sidebar main .card-content { padding: 12px; }
+}
 
 /* Colapsado: reduce ancho y oculta etiquetas */
 body.sidebar-collapsed .sidebar { width: var(--sidebar-collapsed-width); }
 body.sidebar-collapsed .sidebar .brand-title,
 body.sidebar-collapsed .sidebar .menu-item .label,
 body.sidebar-collapsed .sidebar .menu-section,
-/* body.sidebar-collapsed .sidebar .hide-when-collapsed { display: none; } */
-body.sidebar-collapsed .sidebar .sidebar-header { justify-content: center; }
+body.sidebar-collapsed .sidebar .hide-when-collapsed { display: none; }
+/* En 72px el logo y el control se apilan para mantener ambos accesibles. */
+body.sidebar-collapsed .sidebar .sidebar-header { flex-direction: column; gap: 8px; justify-content: center; }
+body.sidebar-collapsed .sidebar .menu-item { justify-content: center; padding-inline: 0; }
+body.sidebar-collapsed .sidebar .menu-item .badge { display: none; }
+.sidebar-backdrop { display: none; }
 
 /* Off-canvas (móviles/tablets): por defecto oculto a la izquierda */
 @media (max-width: 1023.98px) {
-  .sidebar { transform: translateX(-100%); }
-  body.sidebar-open .sidebar { transform: translateX(0); }
+  .sidebar { transform: translateX(-100%); visibility: hidden; max-width: calc(100% - 48px); }
+  body.sidebar-open .sidebar { transform: translateX(0); visibility: visible; }
+  body.sidebar-open { overflow: hidden; }
   /* backdrop para off-canvas */
   .sidebar-backdrop {
     position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 19; display: none;
@@ -451,6 +489,8 @@ body.sidebar-collapsed .sidebar .sidebar-header { justify-content: center; }
   border-radius: 999px; padding: 10px 12px; box-shadow: 0 6px 16px rgba(2,8,23,.15);
 }
 .sidebar-fab:hover { background: var(--muted); }
+/* El FAB pertenece únicamente al modo móvil, igual que la hamburguesa. */
+@media (min-width: 1024px) { .sidebar-fab { display: none; } }
 
 /* Respetar dark mode transitions ya existentes (hereda variables). */
 
@@ -770,7 +810,7 @@ table.dataTable.dtr-inline.collapsed > tbody > tr > th.dtr-control:before {
 .only-mobile { display:none; }
 .hide-on-mobile { display:inline-flex; }
 
-@media (max-width: 1024px){
+@media (max-width: 1023.98px){
   .only-mobile { display:inline-grid !important; }
   .hide-on-mobile { display:none !important; }
 
