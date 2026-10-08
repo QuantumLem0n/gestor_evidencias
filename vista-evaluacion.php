@@ -5,10 +5,13 @@
  * Filtros: estado (todas|pendiente|completa) e instrumento (id).
  */
 include 'conexion.php';
+require_once 'permisos-instrumentos.php';
+$usuarioActual = usuarioActualInstrumentos($conn);
+$alcance = alcanceInstrumentos($usuarioActual);
 include 'validacion.php';
 
 $user_id   = isset($_SESSION['ID'])  ? (int)$_SESSION['ID']  : 0;
-$user_role = isset($_SESSION['ROL']) ? (int)$_SESSION['ROL'] : 0;
+$user_role = (int)$usuarioActual['rol'];
 
 $estado = isset($_GET['estado']) ? trim($_GET['estado']) : 'todas'; // pendiente|completa|todas
 $inst   = isset($_GET['instrumento']) ? (int)$_GET['instrumento'] : 0;
@@ -39,13 +42,16 @@ $sql = "SELECT
           SELECT te.id_tipo_evidencia, COUNT(DISTINCT ite.id_instrumento) AS total_inst
           FROM tipos_de_evidencia te
           LEFT JOIN instrumento_tipo_evidencia ite ON ite.id_tipo_evidencia = te.id_tipo_evidencia
-          LEFT JOIN instrumentos i ON i.id_instrumento = ite.id_instrumento AND i.activo = 1
+          JOIN instrumentos i ON i.id_instrumento = ite.id_instrumento AND i.activo = 1 AND ($alcance)
           GROUP BY te.id_tipo_evidencia
         ) insts ON insts.id_tipo_evidencia = t.id_tipo_evidencia
         LEFT JOIN (
-          SELECT id_evidencia, COUNT(DISTINCT id_instrumento) AS graded
-          FROM calificacion_evidencia
-          GROUP BY id_evidencia
+          SELECT ce.id_evidencia, COUNT(DISTINCT ce.id_instrumento) AS graded
+          FROM calificacion_evidencia ce
+          JOIN evidencias eg ON eg.id_evidencia=ce.id_evidencia
+          JOIN instrumento_tipo_evidencia ite ON ite.id_tipo_evidencia=eg.id_tipo_evidencia AND ite.id_instrumento=ce.id_instrumento
+          JOIN instrumentos i ON i.id_instrumento=ce.id_instrumento AND i.activo=1 AND ($alcance)
+          GROUP BY ce.id_evidencia
         ) ceg ON ceg.id_evidencia = e.id_evidencia
         WHERE e.ocultar = 0";
 
@@ -57,13 +63,14 @@ if ($user_role === 4) {
   $types .= 'i'; $params[] = $user_id;
 }
 
+$alcanceFiltro = alcanceInstrumentos($usuarioActual, 'i2');
 // Filtro por instrumento: evidencias cuyo TIPO tenga relación con ese instrumento
 if ($inst > 0) {
   $sql .= " AND EXISTS (
     SELECT 1
     FROM instrumento_tipo_evidencia ite2
     JOIN instrumentos i2 ON i2.id_instrumento = ite2.id_instrumento AND i2.activo=1
-    WHERE ite2.id_tipo_evidencia = e.id_tipo_evidencia AND ite2.id_instrumento = ?
+    WHERE ($alcanceFiltro) AND ite2.id_tipo_evidencia = e.id_tipo_evidencia AND ite2.id_instrumento = ?
   )";
   $types .= 'i'; $params[] = $inst;
 }
@@ -111,7 +118,8 @@ $res = $stmt->get_result();
           if ($totalAttrs <= 0 || $filledAttrs < $totalAttrs || $totalInst <= 0) continue;
 
           $pct = 100;
-          $href = $file ? ('uploads/files/'.rawurlencode($file)) : '';
+          $href = $file ? ('evidencia-archivo.php?id='.$id.'&amp;descargar=1') : '';
+          $btnPreview = $file ? '<a class="btn" href="evidencia-archivo.php?id='.$id.'" target="_blank" rel="noopener" title="Ver documento sin descargar">Ver documento</a> ' : '';
 
           $pend = max(0, $totalInst - $gradedInst);
           $estadoCalc = ($pend === 0) ? 'completa' : 'pendiente';
@@ -147,7 +155,7 @@ $res = $stmt->get_result();
         <td class="font-medium"><?= htmlspecialchars($tit ?: '—') ?></td>
         <td><span class="badge"><?= htmlspecialchars($tipoN) ?></span></td>
         <td><?= htmlspecialchars($docN ?: '—') ?></td>
-        <td><?= $btnDownload ?></td>
+        <td><?= $btnPreview ?><?= $btnDownload ?></td>
         <td><span class="badge" title="<?= htmlspecialchars($row['fecha_subida'] ?? '') ?>"><?= htmlspecialchars($date) ?></span></td>
         <td title="<?= $filledAttrs ?>/<?= $totalAttrs ?> atributos">
           <div class="progress"><div class="progress-bar" style="width: 100%;"></div></div>

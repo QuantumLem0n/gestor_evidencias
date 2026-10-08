@@ -6,6 +6,8 @@
  * - Soporta filtro por rol con ?role=ID (muestra usuarios con ese rol)
  */
 include 'conexion.php';
+require_once 'permisos-instrumentos.php';
+exigirGestion($conn, 'gestion-usuarios.php');
 
 $role = isset($_GET['role']) ? trim($_GET['role']) : '';
 $hasRole = ($role !== '' && is_numeric($role));
@@ -17,6 +19,7 @@ $sql = "SELECT
           u.apellidom,
           u.correo,
           u.rol,
+          (SELECT GROUP_CONCAT(i.abreviatura ORDER BY i.id_instrumento SEPARATOR ', ') FROM evaluador_instrumento ei JOIN instrumentos i ON i.id_instrumento=ei.id_instrumento WHERE ei.id_evaluador=u.id_usuario) AS instrumentos_asignados,
           u.activo,
           r.nombre AS nombrerol,
           u.created_at AS creacion,
@@ -55,6 +58,7 @@ if ($hasRole) {
         <th class="dt-orderable" data-priority="4">Estado</th>
         <th class="dt-orderable" data-priority="5">Creación</th>
         <th class="dt-orderable" data-priority="5">Actualización</th>
+        <th>Instrumentos asignados</th>
         <th data-priority="2">Acciones</th>
       </tr>
     </thead>
@@ -126,6 +130,7 @@ if ($hasRole) {
           <td><span class="badge" title="<?= htmlspecialchars($row['creacion'] ?? '') ?>"><?= htmlspecialchars($crea) ?></span></td>
           <td><span class="badge" title="<?= htmlspecialchars($row['actualizacion'] ?? '') ?>"><?= htmlspecialchars($actu) ?></span></td>
 
+          <td><?= htmlspecialchars($rolId === 3 ? ($row['instrumentos_asignados'] ?: 'Sin asignaciones') : 'No aplica') ?></td>
           <td style="display:flex; gap:8px;">
             <?= $btnPerfil ?>
             <?= $btnEdit ?>

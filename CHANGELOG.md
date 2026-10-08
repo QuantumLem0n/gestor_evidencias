@@ -1,6 +1,51 @@
 # Changelog
 
+## 2026-10-08
+
+### Vista previa de documentos durante la evaluacion
+
+- La tabla de evaluacion ofrece **Ver documento** en otra pestaña y conserva la descarga.
+- El modal muestra el documento junto a los instrumentos para calificar, con atributos
+  desplegables; en pantallas pequeñas los paneles se apilan.
+- Nuevo visor local `evidencia-archivo.php`: PDF, imagenes JPEG/PNG/GIF/WebP y texto
+  plano se sirven inline. Otros formatos muestran una alternativa de descarga.
+- El visor y la entrega del archivo verifican cuenta activa y permisos vigentes:
+  evaluador asignado a un instrumento activo del tipo, docente propietario o administrador.
+  Se rechazan evidencias ocultas, archivos inexistentes y rutas fuera de `uploads/files`.
+- El tipo real del archivo se detecta con Fileinfo; no se sirve HTML/SVG como contenido
+  activo. No se envian documentos a visores externos ni se cambia la base de datos.
+- Al cerrar el modal se libera el visor; respuestas tardias de otra evidencia no
+  reemplazan los atributos ni los instrumentos de la seleccion actual.
+- Verificacion: 42 comprobaciones de integracion correctas, sintaxis PHP y
+  `git diff --check` sin errores. Pendiente revision visual en navegador.
+
 ## 2026-10-07
+
+### Asignacion de evaluadores y normalizacion de instrumentos
+
+- Nueva tabla `evaluador_instrumento` con clave compuesta y llaves foraneas.
+- Seleccion multiple en alta/edicion de evaluadores y asignaciones visibles en
+  la tabla de usuarios. Guardado transaccional; al cambiar de rol se retiran
+  asignaciones sin borrar las calificaciones historicas.
+- Verificacion en servidor del rol y estado vigentes y de los instrumentos
+  asignados. Un POST directo no permite calificar instrumentos ajenos.
+- Modal, filtros y pendientes de evaluacion limitados al conjunto autorizado.
+  Administradores conservan alcance global; docentes permanecen en consulta.
+- Alta de instrumentos desde el catalogo y filtros dinamicos por ID: se admiten
+  nuevos instrumentos sin modificar codigo ni columnas de tipos de evidencia.
+- SQL completo `sql/gestor_evidencia_asignaciones.sql`, con todos los datos del
+  respaldo, sin columnas SNI/PRODEP/ESDEPED en `tipos_de_evidencia` y conservando
+  las relaciones existentes de `instrumento_tipo_evidencia` como fuente vigente.
+- Los evaluadores del respaldo reciben nueve asignaciones explicitas para
+  conservar sus accesos previos; los nuevos registros requieren seleccion manual.
+- `conexion.php` apunta a la nueva base; admite `GESTOR_DB_NAME`. Base original
+  y respaldo original intactos. Nueva base importada localmente para la prueba.
+- Autorizacion administrativa en endpoints de usuarios, alta/edicion de
+  instrumentos y alta/edicion de tipos; relaciones invalidas revierten el guardado.
+- Documentacion en `DOCUMENTACION_TECNICA.md` y `sql/README_asignaciones.md`.
+- Verificacion: 33 pruebas de integracion correctas en `tests/instrumentos.php`, todos los PHP sin errores de sintaxis y `git diff --check` limpio; comprobacion
+  visual en navegador pendiente.
+
 
 ### Corrección del layout y la barra lateral
 

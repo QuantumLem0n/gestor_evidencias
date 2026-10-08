@@ -2,6 +2,8 @@
 // tipo-evidencia-insert.php
 header('Content-Type: application/json; charset=utf-8');
 require_once 'conexion.php';
+require_once 'permisos-instrumentos.php';
+exigirGestion($conn, 'tipos-evidencia.php');
 
 function jexit($ok, $msg = '', $extra = []) {
   echo json_encode(array_merge(['status' => $ok ? 'ok' : 'error', 'message' => $msg], $extra));
@@ -39,11 +41,11 @@ try {
 
   // Insert relaciones (si hay)
   if (!empty($insts)) {
-    $sqlR = "INSERT IGNORE INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia) VALUES (?, ?)";
+    $sqlR = "INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia) VALUES (?, ?)";
     $stmtR = $conn->prepare($sqlR);
-    foreach ($insts as $iid) {
+    foreach (array_unique($insts) as $iid) {
       $iid = (int)$iid;
-      if ($iid <= 0) continue;
+      if ($iid <= 0) throw new InvalidArgumentException('Instrumento invalido.');
       $stmtR->bind_param('ii', $iid, $newId);
       if (!$stmtR->execute()) throw new Exception($conn->error);
     }

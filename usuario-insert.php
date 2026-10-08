@@ -1,7 +1,10 @@
 <?php
 // usuario-insert.php
 header('Content-Type: application/json; charset=utf-8');
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 require_once 'conexion.php';
+require_once 'permisos-instrumentos.php';
+exigirGestion($conn, 'gestion-usuarios.php');
 
 function jexit($ok, $msg = '', $extra = []) {
   echo json_encode(array_merge(['status' => $ok ? 'ok' : 'error', 'message' => $msg], $extra));
@@ -42,6 +45,8 @@ $stmt->close();
 // Hash
 $password_hashed = password_hash($password, PASSWORD_BCRYPT);
 
+$conn->begin_transaction();
+try {
 // Insert
 $sql_insert = "INSERT INTO usuarios (nombre, apellidop, apellidom, correo, password, rol, activo, created_at, updated_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
@@ -51,9 +56,16 @@ $stmt2->bind_param("sssssis", $nombre, $apellidop, $apellidom, $correo, $passwor
 if ($stmt2->execute()) {
   $newId = $stmt2->insert_id;
   $stmt2->close();
+  guardarInstrumentosEvaluador($conn, $newId, (int)$rol, $_POST['instrumentos'] ?? []);
+  $conn->commit();
   jexit(true, 'Usuario creado.', ['id' => $newId]);
 } else {
   $err = $conn->error;
   $stmt2->close();
   jexit(false, 'Error al registrar usuario: '.$err);
+}
+
+} catch (Throwable $e) {
+  $conn->rollback();
+  jexit(false, 'No se pudo guardar el usuario. Verifica los datos y los instrumentos seleccionados.');
 }

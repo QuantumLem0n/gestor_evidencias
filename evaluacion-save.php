@@ -3,6 +3,9 @@
 header('Content-Type: application/json; charset=utf-8');
 include 'validacion.php';
 include 'conexion.php';
+require_once 'permisos-instrumentos.php';
+$usuarioActual = usuarioActualInstrumentos($conn);
+$alcance = alcanceInstrumentos($usuarioActual);
 
 function jexit($ok,$msg='',$extra=[]){
   echo json_encode(array_merge(['status'=>$ok?'ok':'error','message'=>$msg],$extra));
@@ -10,10 +13,10 @@ function jexit($ok,$msg='',$extra=[]){
 }
 
 $user_id   = isset($_SESSION['ID'])  ? (int)$_SESSION['ID']  : 0;
-$user_role = isset($_SESSION['ROL']) ? (int)$_SESSION['ROL'] : 0;
+$user_role = (int)$usuarioActual['rol'];
 
 // Permisos: rol 4 (docente) no califica
-if ($user_role === 4) jexit(false,'No autorizado para evaluar.');
+if (!in_array($user_role, [1, 2, 3], true)) jexit(false, 'No autorizado para evaluar.');
 
 $id_evidencia   = isset($_POST['id_evidencia'])   ? (int)$_POST['id_evidencia']   : 0;
 $id_instrumento = isset($_POST['id_instrumento']) ? (int)$_POST['id_instrumento'] : 0;
@@ -61,7 +64,7 @@ $qI = "SELECT i.id_instrumento,
        FROM instrumento_tipo_evidencia ite
        JOIN instrumentos i
             ON i.id_instrumento = ite.id_instrumento AND i.activo = 1
-       WHERE ite.id_tipo_evidencia = ? AND ite.id_instrumento = ?";
+       WHERE ($alcance) AND ite.id_tipo_evidencia = ? AND ite.id_instrumento = ?";
 $sI = $conn->prepare($qI);
 $tid = (int)$ev['id_tipo_evidencia'];
 $sI->bind_param('ii', $tid, $id_instrumento);
@@ -70,7 +73,7 @@ $ri   = $sI->get_result();
 $inst = $ri ? $ri->fetch_assoc() : null;
 $sI->close();
 
-if (!$inst) jexit(false,'Instrumento no asociado al tipo de la evidencia');
+if (!$inst) jexit(false,'No autorizado: instrumento no asignado, inactivo o no asociado al tipo de evidencia');
 
 $isNumeric = ($inst['tipo_calificacion'] === 'NUMERICA');
 

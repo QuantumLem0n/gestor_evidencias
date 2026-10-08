@@ -1,6 +1,6 @@
 <?php
 $servername = "localhost";
-$database = "gestor_evidencia";
+$database = getenv("GESTOR_DB_NAME") ?: "gestor_evidencia_asignaciones";
 $username = "root";
 $password = "";
 // Create connection
