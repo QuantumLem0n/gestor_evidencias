@@ -41,17 +41,17 @@ La conexion se define en `conexion.php`:
 
 ```php
 $servername = "localhost";
-$database = "gestor_evidencia";
+$database = getenv("GESTOR_DB_NAME") ?: "gestor_evidencia_asignaciones";
 $username = "root";
 $password = "";
 ```
 
 Para produccion se recomienda cambiar estos valores por un usuario especifico de base de datos con permisos limitados.
 
-El archivo SQL principal es:
+El archivo SQL completo para la nueva version es:
 
 ```text
-sql/gestor_evidencia.sql
+sql/gestor_evidencia_asignaciones.sql
 ```
 
 Este archivo contiene:
@@ -77,6 +77,7 @@ Este archivo contiene:
 | `tipos_de_evidencia` | Catalogo de categorias de evidencia academica. |
 | `instrumentos` | Catalogo de instrumentos de evaluacion docente. |
 | `instrumento_tipo_evidencia` | Relacion muchos a muchos entre instrumentos y tipos de evidencia. |
+| `evaluador_instrumento` | Instrumentos que cada evaluador tiene permiso de calificar. |
 | `atributos_tipo_evidencia` | Define atributos dinamicos por tipo de evidencia. |
 | `tipos_atributo` | Catalogo de tipos de dato para atributos dinamicos. |
 | `evidencias` | Guarda evidencias cargadas por docentes. |
@@ -367,6 +368,8 @@ Los tipos de calificacion soportados son:
 Reglas principales:
 
 - El rol Docente no puede calificar.
+- La cuenta debe estar activa; el rol Evaluador requiere asignacion explicita en evaluador_instrumento.
+- El instrumento debe estar activo.
 - La evidencia debe existir.
 - La evidencia debe tener todos sus atributos capturados.
 - El instrumento debe estar asociado al tipo de evidencia.
@@ -481,3 +484,28 @@ Para despliegue en produccion se recomienda:
 | `gestion-menu.php` | Administracion del menu. |
 | `perfil.php` | Vista de perfil de usuario. |
 
+## Asignaciones por instrumento (2026-10-07)
+
+La instalacion y conversion se describen en [sql/README_asignaciones.md](sql/README_asignaciones.md).
+El SQL original queda como respaldo; la aplicacion utiliza la nueva base independiente.
+
+- `campos-instrumentos-evaluador.php` agrega seleccion multiple al alta y edicion
+  de usuarios; el catalogo procede de `instrumentos`, sin IDs fijos.
+- `usuario-get.php` devuelve `user.instrumentos`; `usuario-insert.php` y
+  `usuario-update.php` guardan usuario y relaciones en una sola transaccion.
+  La lista vacia revoca todas las asignaciones. Cambiar a otro rol las elimina.
+- `permisos-instrumentos.php` centraliza la consulta del usuario activo, el alcance
+  por instrumento y la autorizacion administrativa de los endpoints modificados.
+  Una sesion antigua no conserva un rol revocado en la base de datos.
+- `evaluacion-get.php`, `evaluacion-save.php`, `evaluacion.php` y
+  `vista-evaluacion.php` aplican el alcance del evaluador (rol 3). Roles 1 y 2
+  conservan acceso global; rol 4 solo consulta sus evidencias.
+- Los totales y pendientes consideran exclusivamente instrumentos activos,
+  asociados al tipo y accesibles al evaluador. Las calificaciones historicas de
+  instrumentos retirados no completan artificialmente otros instrumentos.
+- `instrumento-insert.php` permite ampliar el catalogo desde `instrumentos.php`.
+  Nuevos instrumentos requieren relacion con el tipo y asignacion al evaluador.
+- Los filtros de tipos ahora usan IDs del catalogo, sin depender de abreviaturas
+  ni de las antiguas columnas. El CRUD utiliza exclusivamente la tabla puente.
+- `tests/instrumentos.php` verifica el esquema y los flujos de autorizacion con
+  una base temporal independiente. No requiere credenciales reales de usuarios.

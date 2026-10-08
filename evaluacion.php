@@ -11,9 +11,11 @@ include 'validacion-permiso.php';
 include 'header.php';
 include 'left-menu.php';
 
+require_once 'permisos-instrumentos.php';
+$alcance = alcanceInstrumentos(usuarioActualInstrumentos($conn));
 // Instrumentos para filtro
 $ins = [];
-$qIns = "SELECT id_instrumento, abreviatura FROM instrumentos WHERE activo = 1 ORDER BY id_instrumento";
+$qIns = "SELECT id_instrumento, abreviatura FROM instrumentos i WHERE activo = 1 AND ($alcance) ORDER BY id_instrumento";
 if ($rs = $conn->query($qIns)) { while ($r = $rs->fetch_assoc()) $ins[] = $r; $rs->free(); }
 ?>
 <section class="space-y-6">

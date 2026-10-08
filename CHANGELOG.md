@@ -2,6 +2,32 @@
 
 ## 2026-10-07
 
+### Asignacion de evaluadores y normalizacion de instrumentos
+
+- Nueva tabla `evaluador_instrumento` con clave compuesta y llaves foraneas.
+- Seleccion multiple en alta/edicion de evaluadores y asignaciones visibles en
+  la tabla de usuarios. Guardado transaccional; al cambiar de rol se retiran
+  asignaciones sin borrar las calificaciones historicas.
+- Verificacion en servidor del rol y estado vigentes y de los instrumentos
+  asignados. Un POST directo no permite calificar instrumentos ajenos.
+- Modal, filtros y pendientes de evaluacion limitados al conjunto autorizado.
+  Administradores conservan alcance global; docentes permanecen en consulta.
+- Alta de instrumentos desde el catalogo y filtros dinamicos por ID: se admiten
+  nuevos instrumentos sin modificar codigo ni columnas de tipos de evidencia.
+- SQL completo `sql/gestor_evidencia_asignaciones.sql`, con todos los datos del
+  respaldo, sin columnas SNI/PRODEP/ESDEPED en `tipos_de_evidencia` y conservando
+  las relaciones existentes de `instrumento_tipo_evidencia` como fuente vigente.
+- Los evaluadores del respaldo reciben nueve asignaciones explicitas para
+  conservar sus accesos previos; los nuevos registros requieren seleccion manual.
+- `conexion.php` apunta a la nueva base; admite `GESTOR_DB_NAME`. Base original
+  y respaldo original intactos. Nueva base importada localmente para la prueba.
+- Autorizacion administrativa en endpoints de usuarios, alta/edicion de
+  instrumentos y alta/edicion de tipos; relaciones invalidas revierten el guardado.
+- Documentacion en `DOCUMENTACION_TECNICA.md` y `sql/README_asignaciones.md`.
+- Verificacion: 33 pruebas de integracion correctas en `tests/instrumentos.php`, todos los PHP sin errores de sintaxis y `git diff --check` limpio; comprobacion
+  visual en navegador pendiente.
+
+
 ### Corrección del layout y la barra lateral
 
 - Se corrigió el margen del contenido que era anulado por `.container`, causando que el menú cubriera la página.

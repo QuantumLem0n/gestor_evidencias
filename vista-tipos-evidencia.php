@@ -9,6 +9,7 @@ $sql = "SELECT
           te.id_tipo_evidencia,
           te.nombre_tipo,
           te.descripcion,
+          GROUP_CONCAT(i.id_instrumento ORDER BY i.id_instrumento SEPARATOR '|') AS instrumento_ids,
           GROUP_CONCAT(i.abreviatura ORDER BY i.id_instrumento SEPARATOR ',') AS abrev_list
         FROM tipos_de_evidencia te
         LEFT JOIN instrumento_tipo_evidencia ite
@@ -23,9 +24,6 @@ $result = $conn->query($sql);
   /* Etiquetas de instrumentos (ligeras y discretas) */
   .itags{display:flex;flex-wrap:wrap;gap:6px}
   .t-pill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:12px;line-height:1;border:1px solid rgba(0,0,0,.08)}
-  .t-sni{background:#ecfeff;color:#155e75}
-  .t-prodep{background:#f5f3ff;color:#4c1d95}
-  .t-esdeped{background:#fef9c3;color:#854d0e}
   .t-generic{background:#eef2ff;color:#3730a3}
 </style>
 
@@ -55,22 +53,13 @@ $result = $conn->query($sql);
 
           // Construir etiquetas desde la lista de abreviaturas
           $abrevs = $abrlRaw ? array_filter(array_map('trim', explode(',', $abrlRaw))) : [];
-          $mapClass = [
-            'SNI'     => 't-sni',
-            'PRODEP'  => 't-prodep',
-            'ESDEPED' => 't-esdeped'
-          ];
           $tags = [];
           foreach ($abrevs as $ab) {
-            $cls = $mapClass[$ab] ?? 't-generic';
+            $cls = 't-generic';
             $tags[] = '<span class="t-pill '.$cls.'" title="'.htmlspecialchars($ab).'">'.htmlspecialchars($ab).'</span>';
           }
           $instrumentosHtml = $tags ? '<div class="itags">'.implode('', $tags).'</div>' : '—';
 
-          // Flags para filtros existentes (checkboxes SNI/PRODEP/ESDEPED)
-          $hasSNI     = in_array('SNI', $abrevs, true) ? 1 : 0;
-          $hasPRODEP  = in_array('PRODEP', $abrevs, true) ? 1 : 0;
-          $hasESDEPED = in_array('ESDEPED', $abrevs, true) ? 1 : 0;
 
           // Botón Lista (enlistar características del tipo)
           $btnLista = '
@@ -105,10 +94,7 @@ $result = $conn->query($sql);
             </button>';
         ?>
         <tr
-          data-sni="<?= $hasSNI ?>"
-          data-prodep="<?= $hasPRODEP ?>"
-          data-esdeped="<?= $hasESDEPED ?>"
-          data-instrumentos="<?= htmlspecialchars(implode('|', $abrevs)) ?>"
+          data-instrumentos="<?= htmlspecialchars($row['instrumento_ids'] ?? '') ?>"
         >
           <td></td>
           <td><?= $id ?></td>

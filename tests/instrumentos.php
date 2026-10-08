@@ -1,0 +1,107 @@
+<?php
+// Ejecutar con PHP CLI y MariaDB local. Crea y elimina exclusivamente una BD temporal propia.
+if (PHP_SAPI !== 'cli') exit;
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+chdir(dirname(__DIR__));
+$db = new mysqli('localhost', 'root', '');
+$db->set_charset('utf8mb4');
+$nombre = 'gestor_test_instrumentos_'.bin2hex(random_bytes(5));
+$sql = str_replace('gestor_evidencia_asignaciones', $nombre, file_get_contents('sql/gestor_evidencia_asignaciones.sql'));
+$runner = tempnam(sys_get_temp_dir(), 'instrumentos_');
+$creada = false;
+$checks = 0;
+function comprobar($ok, $mensaje) {
+    global $checks;
+    if (!$ok) throw new RuntimeException($mensaje);
+    $checks++;
+    echo "OK: $mensaje\n";
+}
+function endpoint($archivo, $usuario, $rol, $post=[], $get=[], $json=true) {
+    global $runner, $nombre;
+    $session = ['ID'=>$usuario, 'ROL'=>$rol, 'SESUSUARIO'=>'Prueba', 'APELLIDO'=>'Prueba', 'EMAIL'=>'test@example.invalid', 'RNOMBRE'=>'Prueba'];
+    $codigo = '<?php session_save_path(sys_get_temp_dir()); session_start(); register_shutdown_function(function(){ session_destroy(); }); $_SESSION='.var_export($session,true).'; $_POST='.var_export($post,true).'; $_GET='.var_export($get,true).'; putenv('.var_export('GESTOR_DB_NAME='.$nombre,true).'); include '.var_export(getcwd().'/'.$archivo,true).';';
+    file_put_contents($runner, $codigo);
+    $proceso = proc_open([PHP_BINARY, $runner], [1=>['pipe','w'], 2=>['pipe','w']], $pipes);
+    $salida = stream_get_contents($pipes[1]);
+    $error = stream_get_contents($pipes[2]);
+    fclose($pipes[1]); fclose($pipes[2]);
+    $estado = proc_close($proceso);
+    if ($estado || $error) throw new RuntimeException("$archivo: $error $salida");
+    return $json ? json_decode($salida, true, 512, JSON_THROW_ON_ERROR) : $salida;
+}
+try {
+    $db->multi_query($sql);
+    $creada = true;
+    do { if ($r=$db->store_result()) $r->free(); } while ($db->more_results() && $db->next_result());
+    $db->select_db($nombre);
+    comprobar($db->query("SHOW COLUMNS FROM tipos_de_evidencia")->num_rows===3, 'Esquema sin columnas heredadas');
+    comprobar((int)$db->query('SELECT COUNT(*) FROM evaluador_instrumento')->fetch_row()[0]===9, 'Asignaciones iniciales conservadas');
+    $datos = ['nombre'=>'Evaluador', 'apellidop'=>'Prueba', 'apellidom'=>'Temporal', 'correo'=>'evaluador@test.invalid', 'rol'=>3, 'activo'=>1, 'password'=>'prueba123', 'confirm_password'=>'prueba123', 'instrumentos'=>[1,2]];
+    $r=endpoint('usuario-insert.php',1,1,$datos);
+    comprobar($r['status']==='ok','Alta de evaluador con varios instrumentos');
+    $uid=$r['id'];
+    $r=endpoint('usuario-get.php',1,1,[],['id'=>$uid]);
+    comprobar($r['user']['instrumentos']===[1,2], 'Lectura de asignaciones');
+    $db->query("INSERT INTO tipos_de_evidencia (nombre_tipo) VALUES ('Tipo temporal')"); $tid=$db->insert_id;
+    $db->query("INSERT INTO atributos_tipo_evidencia (id_tipo_evidencia,id_tipo_atributo,nombre_atributo,slug) VALUES ($tid,1,'Texto','texto')"); $aid=$db->insert_id;
+    $db->query("INSERT INTO evidencias (id_docente,id_tipo_evidencia,titulo,archivo) VALUES (4,$tid,'Prueba permisos','test.pdf')"); $eid=$db->insert_id;
+    $db->query("INSERT INTO evidencia_valores_atributo (id_evidencia,id_ate,valor_texto) VALUES ($eid,$aid,'Completo')");
+    $db->query("INSERT INTO instrumento_tipo_evidencia (id_instrumento,id_tipo_evidencia) VALUES (1,$tid),(2,$tid),(3,$tid)");
+    $r=endpoint('evaluacion-get.php',$uid,3,[],['id'=>$eid]);
+    comprobar(array_map('intval',array_column($r['instrumentos'],'id_instrumento'))===[1,2], 'Solo instrumentos asignados en el modal');
+    $nota=['id_evidencia'=>$eid,'id_instrumento'=>1,'resultado'=>'1'];
+    comprobar(endpoint('evaluacion-save.php',$uid,3,$nota)['status']==='ok', 'Calificacion permitida');
+    $nota['id_instrumento']=3;
+    comprobar(endpoint('evaluacion-save.php',$uid,3,$nota)['status']==='error', 'POST directo sin asignacion rechazado');
+    $vista=endpoint('vista-evaluacion.php',$uid,3,[],[],false);
+    comprobar(strpos($vista,'data-pend="1" data-total-inst="2"')!==false, 'Pendientes limitados a instrumentos asignados');
+    $datos['id_usuario']=$uid; $datos['instrumentos']=[2];
+    comprobar(endpoint('usuario-update.php',1,1,$datos)['status']==='ok','Revocacion desde CRUD');
+    $nota['id_instrumento']=1;
+    comprobar(endpoint('evaluacion-save.php',$uid,3,$nota)['status']==='error','Revocacion efectiva con sesion anterior');
+    $antes=$db->query("SELECT resultado FROM calificacion_evidencia WHERE id_evidencia=$eid AND id_instrumento=1")->fetch_row();
+    comprobar((float)$antes[0]===1.0,'Calificacion historica preservada');
+    $datos['instrumentos']=[999999]; $datos['nombre']='No guardar';
+    comprobar(endpoint('usuario-update.php',1,1,$datos)['status']==='error','Instrumento inexistente rechazado');
+    $r=endpoint('usuario-get.php',1,1,[],['id'=>$uid]);
+    comprobar($r['user']['nombre']==='Evaluador' && $r['user']['instrumentos']===[2], 'Rollback de usuario y relaciones');
+    comprobar(endpoint('usuario-update.php',$uid,3,$datos)['status']==='error','Evaluador no puede autoasignarse permisos');
+    comprobar(endpoint('instrumento-insert.php',1,1,['abreviatura'=>'NUEVO','nombre_completo'=>'Nuevo instrumento'])['status']==='ok','Alta de cuarto instrumento');
+    $iid=(int)$db->query("SELECT id_instrumento FROM instrumentos WHERE abreviatura='NUEVO'")->fetch_row()[0];
+    $datos['nombre']='Evaluador'; $datos['instrumentos']=[$iid];
+    comprobar(endpoint('usuario-update.php',1,1,$datos)['status']==='ok','Asignar nuevo instrumento a evaluador existente');
+    $nota['id_instrumento']=$iid;
+    comprobar(endpoint('evaluacion-save.php',$uid,3,$nota)['status']==='error','Instrumento sin relacion al tipo rechazado');
+    $db->query("INSERT INTO instrumento_tipo_evidencia (id_instrumento,id_tipo_evidencia) VALUES ($iid,$tid)");
+    comprobar(endpoint('evaluacion-save.php',$uid,3,$nota)['status']==='ok','Evaluar nuevo instrumento asociado al tipo');
+    comprobar(endpoint('instrumento-update.php',1,1,['id_instrumento'=>$iid,'tipo_calificacion'=>'NUMERICA','min_calificacion'=>0,'max_calificacion'=>10])['status']==='ok','Configurar nuevo instrumento numerico');
+    $nota['resultado']='11';
+    comprobar(endpoint('evaluacion-save.php',$uid,3,$nota)['status']==='error','Rango numerico validado');
+    $nota['resultado']='8.5';
+    comprobar(endpoint('evaluacion-save.php',$uid,3,$nota)['status']==='ok','Calificacion numerica valida');
+    $db->query("UPDATE usuarios SET activo=0 WHERE id_usuario=$uid");
+    comprobar(endpoint('evaluacion-save.php',$uid,3,$nota)['status']==='error','Cuenta desactivada no califica');
+    $db->query("UPDATE usuarios SET activo=1 WHERE id_usuario=$uid");
+    $db->query("UPDATE instrumentos SET activo=0 WHERE id_instrumento=$iid");
+    comprobar(endpoint('evaluacion-save.php',$uid,3,$nota)['status']==='error','Instrumento inactivo rechazado');
+    comprobar(endpoint('evaluacion-save.php',4,4,$nota)['status']==='error','Docente no califica');
+    $datos['instrumentos']=[];
+    comprobar(endpoint('usuario-update.php',1,1,$datos)['status']==='ok','Evaluador sin asignaciones permitido');
+    $r=endpoint('evaluacion-get.php',$uid,3,[],['id'=>$eid]);
+    comprobar($r['instrumentos']===[], 'Sin asignaciones no ofrece instrumentos');
+    $datos['instrumentos']=[1];
+    comprobar(endpoint('usuario-update.php',1,1,$datos)['status']==='ok','Reasignacion posterior');
+    $tipoDatos=['id_tipo_evidencia'=>$tid,'nombre_tipo'=>'Tipo temporal','descripcion'=>'Prueba','instrumentos'=>[1,2,$iid]];
+    comprobar(endpoint('tipo-evidencia-update.php',1,1,$tipoDatos)['status']==='ok','CRUD de tipos sin columnas heredadas');
+    $tipoDatos['instrumentos']=[999999];
+    comprobar(endpoint('tipo-evidencia-update.php',1,1,$tipoDatos)['status']==='error','Relacion de tipo invalida rechazada');
+    comprobar((int)$db->query("SELECT COUNT(*) FROM instrumento_tipo_evidencia WHERE id_tipo_evidencia=$tid")->fetch_row()[0]===3,'Rollback conserva relaciones del tipo');
+    $datos['rol']=4; $datos['instrumentos']=[];
+    comprobar(endpoint('usuario-update.php',1,1,$datos)['status']==='ok','Cambio de rol');
+    comprobar((int)$db->query("SELECT COUNT(*) FROM evaluador_instrumento WHERE id_evaluador=$uid")->fetch_row()[0]===0,'Cambio de rol elimina asignaciones');
+    comprobar(endpoint('evaluacion-save.php',$uid,3,$nota)['status']==='error','Rol vigente prevalece sobre sesion antigua');
+    echo "$checks comprobaciones correctas.\n";
+} finally {
+    if ($creada) $db->query("DROP DATABASE `$nombre`");
+    unlink($runner);
+}

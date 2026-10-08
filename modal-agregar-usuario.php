@@ -81,6 +81,7 @@ if ($resR = mysqli_query($conn, $qR)) {
             </select>
           </div>
         </div>
+      <?php $prefijoUsuario = 'au'; include 'campos-instrumentos-evaluador.php'; ?>
       </form>
     </div>
 

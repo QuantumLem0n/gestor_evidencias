@@ -3,6 +3,9 @@
 header('Content-Type: application/json; charset=utf-8');
 include 'validacion.php';
 include 'conexion.php';
+require_once 'permisos-instrumentos.php';
+$usuarioActual = usuarioActualInstrumentos($conn);
+$alcance = alcanceInstrumentos($usuarioActual);
 
 function jexit($ok,$msg='',$extra=[]){
   echo json_encode(array_merge(['status'=>$ok?'ok':'error','message'=>$msg],$extra));
@@ -10,7 +13,7 @@ function jexit($ok,$msg='',$extra=[]){
 }
 
 $user_id  = isset($_SESSION['ID'])  ? (int)$_SESSION['ID']  : 0;
-$user_role= isset($_SESSION['ROL']) ? (int)$_SESSION['ROL'] : 0;
+$user_role = (int)$usuarioActual['rol'];
 $id       = isset($_GET['id'])      ? (int)$_GET['id']      : 0;
 
 if ($id <= 0) jexit(false,'Parámetros inválidos');
@@ -53,7 +56,7 @@ $sql = "SELECT
         LEFT JOIN calificacion_evidencia ce
               ON ce.id_instrumento = i.id_instrumento
              AND ce.id_evidencia   = ?
-        WHERE ite.id_tipo_evidencia = ?
+        WHERE ($alcance) AND ite.id_tipo_evidencia = ?
         ORDER BY i.id_instrumento ASC";
 
 $stmt = $conn->prepare($sql);
@@ -66,6 +69,7 @@ $rows = [];
 if ($rs) {
   while ($r = $rs->fetch_assoc()) {
     // Normaliza tipos para el JSON
+    $r['puede_evaluar'] = in_array($user_role, [1,2,3], true);
     $r['es_numerico'] = (int)$r['es_numerico'];
     if (array_key_exists('resultado', $r)) {
       if (is_null($r['resultado'])) {

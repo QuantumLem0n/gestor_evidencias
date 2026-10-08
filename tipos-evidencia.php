@@ -37,16 +37,10 @@ include 'left-menu.php';
       <!-- (Hueco por si luego agregas filtros) -->
       <!-- Filtros por instrumento -->
       <div id="instFilters" style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
-        <label style="display:flex; align-items:center; gap:6px;">
-          <input type="checkbox" id="filterSNI"> <span>SNI</span>
-        </label>
-        <label style="display:flex; align-items:center; gap:6px;">
-          <input type="checkbox" id="filterPRODEP"> <span>PRODEP</span>
-        </label>
-        <label style="display:flex; align-items:center; gap:6px;">
-          <input type="checkbox" id="filterESDEPED"> <span>ESDEPED</span>
-        </label>
-      </div>
+        <?php $filtrosInstrumentos = $conn->query('SELECT id_instrumento, abreviatura FROM instrumentos ORDER BY id_instrumento'); ?>
+        <?php while ($filtroInstrumento = $filtrosInstrumentos->fetch_assoc()): ?>
+          <label><input type="checkbox" class="filter-instrumento" value="<?= (int)$filtroInstrumento['id_instrumento'] ?>"> <?= htmlspecialchars($filtroInstrumento['abreviatura']) ?></label>
+        <?php endwhile; ?>      </div>
  
       <div></div>
     </div>
@@ -112,19 +106,8 @@ if (!window.__teFilterInstalled) {
     const node = dtTE.row(dataIndex).node();
     if (!node) return true;
 
-    const wantSNI = $('#filterSNI').prop('checked');
-    const wantPRODEP = $('#filterPRODEP').prop('checked');
-    const wantESDEPED = $('#filterESDEPED').prop('checked');
-
-    const rowSNI = node.getAttribute('data-sni') === '1';
-    const rowPRODEP = node.getAttribute('data-prodep') === '1';
-    const rowESDEPED = node.getAttribute('data-esdeped') === '1';
-
-    // Regla: si un filtro está marcado, la fila debe cumplirlo.
-    if (wantSNI && !rowSNI) return false;
-    if (wantPRODEP && !rowPRODEP) return false;
-    if (wantESDEPED && !rowESDEPED) return false;
-
+    const ids = (node.dataset.instrumentos || '').split('|');
+    if (![...document.querySelectorAll('.filter-instrumento:checked')].every(el => ids.includes(el.value))) return false;
     return true;
   });
   window.__teFilterInstalled = true;
@@ -208,19 +191,10 @@ function initDTTE(){
 
 // ----- NUEVO: persistencia de filtros -----
 function getFiltersState(){
-  return {
-    sni: !!document.getElementById('filterSNI')?.checked,
-    prodep: !!document.getElementById('filterPRODEP')?.checked,
-    esdeped: !!document.getElementById('filterESDEPED')?.checked
-  };
+  return [...document.querySelectorAll('.filter-instrumento:checked')].map(el => el.value);
 }
 function setFiltersState(st){
-  const sni = document.getElementById('filterSNI');
-  const prodep = document.getElementById('filterPRODEP');
-  const esdeped = document.getElementById('filterESDEPED');
-  if (sni && typeof st.sni === 'boolean') sni.checked = st.sni;
-  if (prodep && typeof st.prodep === 'boolean') prodep.checked = st.prodep;
-  if (esdeped && typeof st.esdeped === 'boolean') esdeped.checked = st.esdeped;
+  document.querySelectorAll('.filter-instrumento').forEach(el => el.checked = Array.isArray(st) && st.includes(el.value));
 }
 function restoreInstrumentFilters(){
   try {
@@ -232,8 +206,7 @@ function saveInstrumentFilters(){
   try { localStorage.setItem(FILTERS_KEY, JSON.stringify(getFiltersState())); } catch(e){}
 }
 function bindInstrumentFiltersEvents(){
-  ['filterSNI','filterPRODEP','filterESDEPED'].forEach(id=>{
-    const el = document.getElementById(id);
+  document.querySelectorAll('.filter-instrumento').forEach(el=>{
     if (el) {
       el.onchange = function(){
         saveInstrumentFilters();

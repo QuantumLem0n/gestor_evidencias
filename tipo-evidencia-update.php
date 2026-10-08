@@ -2,6 +2,8 @@
 // tipo-evidencia-update.php
 header('Content-Type: application/json; charset=utf-8');
 require_once 'conexion.php';
+require_once 'permisos-instrumentos.php';
+exigirGestion($conn, 'tipos-evidencia.php');
 
 function jexit($ok, $msg = '', $extra = []) {
   echo json_encode(array_merge(['status' => $ok ? 'ok' : 'error', 'message' => $msg], $extra));
@@ -46,11 +48,11 @@ try {
   $stmtD->close();
 
   if (!empty($insts)) {
-    $sqlIns = "INSERT IGNORE INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia) VALUES (?, ?)";
+    $sqlIns = "INSERT INTO instrumento_tipo_evidencia (id_instrumento, id_tipo_evidencia) VALUES (?, ?)";
     $stmtI = $conn->prepare($sqlIns);
-    foreach ($insts as $iid) {
+    foreach (array_unique($insts) as $iid) {
       $iid = (int)$iid;
-      if ($iid <= 0) continue;
+      if ($iid <= 0) throw new InvalidArgumentException('Instrumento invalido.');
       $stmtI->bind_param('ii', $iid, $id);
       if (!$stmtI->execute()) throw new Exception($conn->error);
     }

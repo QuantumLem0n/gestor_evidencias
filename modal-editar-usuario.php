@@ -74,6 +74,7 @@ if ($resR = mysqli_query($conn, $qR)) {
           </div>
           <p class="text-muted" style="margin:4px 0 0;">Déjalas vacías si no deseas cambiar la contraseña.</p>
         </div>
+      <?php $prefijoUsuario = 'eu'; include 'campos-instrumentos-evaluador.php'; ?>
       </form>
     </div>
 
@@ -124,6 +125,10 @@ if ($resR = mysqli_query($conn, $qR)) {
           document.getElementById('eu_correo').value     = u.correo || '';
           document.getElementById('eu_rol').value        = u.rol || '';
           document.getElementById('eu_activo').value     = (u.activo != null ? String(u.activo) : '1');
+          document.querySelectorAll('#eu_instrumentos input').forEach(el => {
+            el.checked = (u.instrumentos || []).map(String).includes(el.value);
+          });
+          document.getElementById('eu_rol').dispatchEvent(new Event('change'));
           open();
         } else {
           const msg = (data && data.message) ? data.message : 'No se pudieron cargar los datos.';

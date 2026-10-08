@@ -2,6 +2,8 @@
 // usuario-eliminar.php
 header('Content-Type: application/json; charset=utf-8');
 require_once 'conexion.php';
+require_once 'permisos-instrumentos.php';
+exigirGestion($conn, 'gestion-usuarios.php');
 
 function jexit($ok, $msg = '', $extra = []) {
   echo json_encode(array_merge(['status' => $ok ? 'ok' : 'error', 'message' => $msg], $extra));

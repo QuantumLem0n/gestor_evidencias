@@ -6,7 +6,7 @@ require_once 'conexion.php';
 $ins = [];
 $qIns = "SELECT id_instrumento, abreviatura, nombre_completo
          FROM instrumentos
-         WHERE activo = 1
+         WHERE 1 = 1
          ORDER BY id_instrumento";
 if ($rs = $conn->query($qIns)) {
   while ($r = $rs->fetch_assoc()) { $ins[] = $r; }

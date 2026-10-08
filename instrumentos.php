@@ -1,8 +1,7 @@
 <?php
 /**
  * Gestión de Instrumentos (Evaluación)
- * - Solo edición de la forma de calificar (Aprobación vs Numérica + rango).
- * - NO se pueden agregar/eliminar ni cambiar abreviatura/nombre.
+ * - Alta de instrumentos y edicion de la forma de calificar.
  * - Carga la tabla por AJAX desde vista-instrumentos.php
  */
 
@@ -18,9 +17,18 @@ include 'left-menu.php';
       <h1 class="text-2xl font-semibold">Evaluación → Instrumentos</h1>
       <p class="text-muted-foreground">Configura si cada instrumento se califica por aprobación (0/1) o de forma numérica (con rango).</p>
     </div>
-    <!-- No hay botón de agregar -->
   </header>
 
+  <details class="card">
+    <summary class="card-content">Agregar instrumento</summary>
+    <form id="formNuevoInstrumento" class="card-content space-y-4">
+      <label>Abreviatura <input class="input" name="abreviatura" maxlength="20" required></label>
+      <label>Nombre completo <input class="input" name="nombre_completo" maxlength="150" required></label>
+      <p>Se crea con calificacion por aprobacion. Despues puedes editar el rango y asignarlo a tipos de evidencia y evaluadores.</p>
+      <button class="btn btn-primary" type="submit">Crear instrumento</button>
+      <p id="resultadoNuevoInstrumento" role="status"></p>
+    </form>
+  </details>
   <!-- Barra de herramientas -->
   <div class="card">
     <div class="card-content" style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between;">
@@ -62,6 +70,19 @@ if (file_exists('modal-editar-instrumento.php')) include 'modal-editar-instrumen
 ?>
 
 <script>
+document.getElementById('formNuevoInstrumento').addEventListener('submit', async function(event) {
+  event.preventDefault();
+  const boton = this.querySelector('button');
+  boton.disabled = true;
+  try {
+    const respuesta = await fetch('instrumento-insert.php', {method:'POST', body:new FormData(this)});
+    const datos = await respuesta.json();
+    document.getElementById('resultadoNuevoInstrumento').textContent = datos.message;
+    if (datos.status === 'ok') { this.reset(); loadTableINS(); }
+  } catch (error) {
+    document.getElementById('resultadoNuevoInstrumento').textContent = 'No se pudo crear el instrumento.';
+  } finally { boton.disabled = false; }
+});
 /* ========= Utilidades ========= */
 window.lockPageScroll = function(lock){
   document.documentElement.style.overflow = lock ? 'hidden' : '';

@@ -1,7 +1,10 @@
 <?php
 // usuario-update.php
 header('Content-Type: application/json; charset=utf-8');
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 require_once 'conexion.php';
+require_once 'permisos-instrumentos.php';
+exigirGestion($conn, 'gestion-usuarios.php');
 
 function jexit($ok, $msg = '', $extra = []) {
   echo json_encode(array_merge(['status' => $ok ? 'ok' : 'error', 'message' => $msg], $extra));
@@ -38,6 +41,12 @@ if ($stmtC->num_rows > 0) {
 }
 $stmtC->close();
 
+$conn->begin_transaction();
+try {
+$existente = $conn->prepare('SELECT id_usuario FROM usuarios WHERE id_usuario=? FOR UPDATE');
+$existente->bind_param('i', $id);
+$existente->execute();
+if (!$existente->get_result()->fetch_assoc()) throw new RuntimeException('Usuario inexistente.');
 if ($pass || $confirm) {
   if ($pass !== $confirm) jexit(false, 'Las contraseñas no coinciden.');
   $hash = password_hash($pass, PASSWORD_BCRYPT);
@@ -56,9 +65,16 @@ if ($pass || $confirm) {
 
 if ($stmt->execute()) {
   $stmt->close();
+  guardarInstrumentosEvaluador($conn, $id, (int)$rol, $_POST['instrumentos'] ?? []);
+  $conn->commit();
   jexit(true, 'Usuario actualizado.');
 } else {
   $err = $conn->error;
   $stmt->close();
   jexit(false, 'Error al actualizar: '.$err);
+}
+
+} catch (Throwable $e) {
+  $conn->rollback();
+  jexit(false, 'No se pudo guardar el usuario. Verifica los datos y los instrumentos seleccionados.');
 }

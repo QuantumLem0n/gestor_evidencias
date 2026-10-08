@@ -123,7 +123,7 @@ require_once 'conexion.php';
       .then(j=>{
         if (!j || j.status !== 'ok') { wrap.innerHTML = '<p class="text-muted">No se pudieron cargar los instrumentos.</p>'; return; }
         const ins = j.instrumentos || [];
-        if (!ins.length) { wrap.innerHTML = '<p class="text-muted">Esta evidencia no requiere instrumentos.</p>'; return; }
+        if (!ins.length) { wrap.innerHTML = '<p class="text-muted">No hay instrumentos asignados disponibles para esta evidencia.</p>'; return; }
         const frag = document.createDocumentFragment();
         ins.forEach(it=>{
           const idInst = it.id_instrumento;
@@ -160,6 +160,7 @@ require_once 'conexion.php';
               ${it.actualizado_en ? `Última actualización: ${escapeHtml(it.actualizado_en)}` : (it.calificado_en ? `Creado: ${escapeHtml(it.calificado_en)}` : 'Sin calificación')}
             </div>
           `;
+          if (!it.puede_evaluar) box.querySelectorAll('input, select, button').forEach(el => el.disabled = true);
           frag.appendChild(box);
         });
         wrap.innerHTML = ''; wrap.appendChild(frag);
